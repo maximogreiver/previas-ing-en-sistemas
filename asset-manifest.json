@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/previas-ing-en-sistemas/static/css/main.61de1de3.css",
+    "main.js": "/previas-ing-en-sistemas/static/js/main.b5bd6546.js",
+    "index.html": "/previas-ing-en-sistemas/index.html",
+    "main.61de1de3.css.map": "/previas-ing-en-sistemas/static/css/main.61de1de3.css.map",
+    "main.b5bd6546.js.map": "/previas-ing-en-sistemas/static/js/main.b5bd6546.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.61de1de3.css",
+    "static/js/main.b5bd6546.js"
+  ]
+}
