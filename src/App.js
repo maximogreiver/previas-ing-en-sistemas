@@ -13,20 +13,55 @@ import {
 } from "lucide-react";
 import "./App.css";
 
+// Metadata de cada carrera. Las materias se definen dentro del componente.
+const CAREER_META = {
+  ing: {
+    name: "Ingeniería en Sistemas",
+    subtitle: "Universidad ORT - Plan 2019 (2485)",
+  },
+  lic: {
+    name: "Licenciatura en Sistemas",
+    subtitle: "Universidad ORT",
+  },
+};
+
+// Clave de localStorage donde se guarda el progreso de una carrera.
+const statusKey = (career) => `subjectStatus_${career}`;
+
+// Carga el progreso de una carrera. Migra la clave vieja ("subjectStatus")
+// a Ingeniería para no perder el progreso de usuarios existentes.
+const loadStatus = (career) => {
+  const saved = localStorage.getItem(statusKey(career));
+  if (saved) return JSON.parse(saved);
+  if (career === "ing") {
+    const legacy = localStorage.getItem("subjectStatus");
+    if (legacy) return JSON.parse(legacy);
+  }
+  return {};
+};
+
 function App() {
-  const [subjectStatus, setSubjectStatus] = useState(() => {
-    const saved = localStorage.getItem("subjectStatus");
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [selectedCareer, setSelectedCareer] = useState(
+    () => localStorage.getItem("selectedCareer") || "ing",
+  );
+  const [subjectStatus, setSubjectStatus] = useState(() =>
+    loadStatus(localStorage.getItem("selectedCareer") || "ing"),
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  // Guardar en localStorage cada vez que cambia
+  // Al cambiar de carrera: recordar la elección y cargar su progreso.
   useEffect(() => {
-    localStorage.setItem("subjectStatus", JSON.stringify(subjectStatus));
-  }, [subjectStatus]);
+    localStorage.setItem("selectedCareer", selectedCareer);
+    setSubjectStatus(loadStatus(selectedCareer));
+  }, [selectedCareer]);
 
-  const subjects = useMemo(
+  // Guardar en localStorage (por carrera) cada vez que cambia el progreso.
+  useEffect(() => {
+    localStorage.setItem(statusKey(selectedCareer), JSON.stringify(subjectStatus));
+  }, [subjectStatus, selectedCareer]);
+
+  const ingenieriaSubjects = useMemo(
     () => [
       // Semestre 1
       {
@@ -144,13 +179,17 @@ function App() {
 
       // Semestre 4
       {
-        id: "m4",
-        name: "Optimización con Álgebra",
+        id: "mat-ing",
+        name: "Materia de Matemática",
         semester: 4,
         credits: 1,
-        standing: 6,
-        depsPartial: [],
-        depsTotal: [2103, 7660],
+        minCount: 1,
+        type: "group",
+        options: [
+          { id: 7812, name: "Ecuaciones diferenciales", standing: 6, depsPartial: [2103, 7660], depsTotal: [] },
+          { id: 7690, name: "Optimización con álgebra lineal", standing: 6, depsPartial: [], depsTotal: [2103, 7660] },
+          { id: 7691, name: "Cálculo en varias variables", standing: 6, depsPartial: [7660], depsTotal: [] },
+        ],
       },
       {
         id: 3837,
@@ -191,14 +230,17 @@ function App() {
 
       // Semestre 5
       {
-        id: "cs5",
+        id: "cs-ing",
         name: "Materia de Ciencias sociales",
         semester: 5,
         credits: 1,
-        standing: 9,
-        depsPartial: [],
-        depsTotal: [],
-        type: "elective",
+        minCount: 1,
+        type: "group",
+        options: [
+          { id: 1781, name: "Administración general", standing: 9, depsPartial: [], depsTotal: [] },
+          { id: 6411, name: "Finanzas y valoración de proyectos", standing: 16, depsPartial: [], depsTotal: [] },
+          { id: 7668, name: "Economía y organización empresarial", standing: 9, depsPartial: [], depsTotal: [] },
+        ],
       },
       {
         id: 3839,
@@ -239,26 +281,39 @@ function App() {
 
       // Semestre 5.5
       {
-        id: "cn55",
+        id: "com-ing",
         name: "Materia de Comunicación y negociación",
         semester: 5.5,
-        credits: 1,
-        standing: 12,
-        depsPartial: [],
-        depsTotal: [],
-        type: "elective",
+        credits: 2,
+        minCount: 2,
+        type: "group",
+        // Gestión de comunicación, Habilidades gerenciales, Habilidades de
+        // equipo y Técnicas de negociación piden además "1 de {ética / inglés /
+        // Comunicación y liderazgo} TOTAL". Ética e inglés no están en este
+        // plan, así que se modela con Comunicación y liderazgo (7663) TOTAL.
+        options: [
+          { id: 7663, name: "Comunicación y liderazgo", standing: 12, depsPartial: [], depsTotal: [] },
+          { id: 1410, name: "Recursos humanos", standing: 16, depsPartial: [], depsTotal: [] },
+          { id: 5636, name: "Gestión de comunicación, conflictos en proyectos", standing: 16, depsPartial: [7674], depsTotal: [7663] },
+          { id: 5733, name: "Habilidades gerenciales en grupos de proyectos", standing: 16, depsPartial: [7674], depsTotal: [7663] },
+          { id: 5906, name: "Habilidades de equipo en desarrollo de software", standing: 16, depsPartial: [7674], depsTotal: [7663] },
+          { id: 7473, name: "Técnicas de negociación para equipos de proyecto", standing: 16, depsPartial: [7674], depsTotal: [7663] },
+        ],
       },
 
       // Semestre 6
       {
-        id: "si6",
+        id: "si-ing",
         name: "Materia de Sistemas inteligentes",
         semester: 6,
         credits: 1,
-        standing: 12,
-        depsPartial: [],
-        depsTotal: [1774, 1780],
-        type: "elective",
+        minCount: 1,
+        type: "group",
+        options: [
+          { id: 7349, name: "Machine Learning para sistemas inteligentes", standing: 12, depsPartial: [], depsTotal: [1774, 1780] },
+          { id: 7678, name: "Machine Learning para análisis de datos", standing: 12, depsPartial: [], depsTotal: [1774, 1780] },
+          { id: 7679, name: "Machine Learning para análisis de secuencias", standing: 12, depsPartial: [], depsTotal: [1774, 1780] },
+        ],
       },
       {
         id: 6343,
@@ -299,24 +354,37 @@ function App() {
 
       // Semestre 7
       {
-        id: "gi7",
+        id: "gi-ing",
         name: "Materia de Gestión de la información",
         semester: 7,
         credits: 1,
-        standing: 16,
-        depsPartial: [],
-        depsTotal: [3839],
-        type: "elective",
+        minCount: 1,
+        type: "group",
+        options: [
+          { id: 3437, name: "Web mining", standing: 16, depsPartial: [], depsTotal: [3837] },
+          { id: 3842, name: "Bases de datos 3", standing: 16, depsPartial: [3837], depsTotal: [] },
+          { id: 7466, name: "Bases de datos no relacionales", standing: 16, depsPartial: [], depsTotal: [3839] },
+          { id: 7657, name: "Arquitectura de software para Big Data", standing: 16, depsPartial: [], depsTotal: [3851] },
+          { id: 7664, name: "Data mining", standing: 16, depsPartial: [], depsTotal: [3837] },
+          { id: 7673, name: "Gobernanza para Big Data", standing: 16, depsPartial: [], depsTotal: [3839] },
+          { id: 7692, name: "Fundamentos de Big Data", standing: 16, depsPartial: [], depsTotal: [3839, 3924] },
+          { id: 7715, name: "Herramientas de software para Big Data", standing: 16, depsPartial: [3839], depsTotal: [3924, 6409] },
+        ],
       },
       {
-        id: "seg7",
+        id: "seg-ing",
         name: "Materia de Seguridad informática",
         semester: 7,
         credits: 1,
-        standing: 16,
-        depsPartial: [],
-        depsTotal: [],
-        type: "elective",
+        minCount: 1,
+        type: "group",
+        options: [
+          { id: 4231, name: "Aspectos de seguridad de sistemas informáticos", standing: 16, depsPartial: [], depsTotal: [] },
+          { id: 6147, name: "Seguridad en aplicaciones", standing: 16, depsPartial: [], depsTotal: [4231] },
+          { id: 7271, name: "Tecnologías aplicadas a la seguridad de la información", standing: 16, depsPartial: [], depsTotal: [4231] },
+          { id: 8082, name: "Tópicos avanzados en Seguridad", standing: 12, depsPartial: [], depsTotal: [] },
+          { id: 8149, name: "Implementación de seguridad en sistemas de información", standing: 16, depsPartial: [], depsTotal: [4231] },
+        ],
       },
       {
         id: 3851,
@@ -348,46 +416,59 @@ function App() {
 
       // Semestre 7.5
       {
-        id: "ie75",
+        id: "inn-ing",
         name: "Materia de Innovación y emprendedurismo",
         semester: 7.5,
         credits: 1,
-        standing: 16,
-        depsPartial: [],
-        depsTotal: [],
-        type: "elective",
+        minCount: 1,
+        type: "group",
+        options: [
+          { id: 6852, name: "Emprendimientos dinámicos", standing: 16, depsPartial: [], depsTotal: ["cs-ing"] },
+          { id: 6934, name: "Innovación disruptiva", standing: 16, depsPartial: [], depsTotal: ["cs-ing"] },
+          { id: 7686, name: "Taller de innovación y emprendedurismo", standing: 16, depsPartial: [], depsTotal: [] },
+        ],
       },
 
       // Semestre 8
       {
-        id: "alp8",
-        name: "Materia de Algoritmos y lenguajes",
+        id: "lp-ing",
+        name: "Materia de Lenguajes de programación",
         semester: 8,
         credits: 1,
-        standing: 20,
-        depsPartial: [],
-        depsTotal: [1778],
-        type: "elective",
+        minCount: 1,
+        type: "group",
+        options: [
+          { id: 1793, name: "Lenguajes y compiladores", standing: 0, depsPartial: [1774, 6563], depsTotal: [] },
+          { id: 6030, name: "Tópicos avanzados en algoritmia", standing: 12, depsPartial: [], depsTotal: [1774] },
+          { id: 6543, name: "Algoritmos, estructuras de datos y lenguajes avanzados", standing: 16, depsPartial: [], depsTotal: [1778] },
+          { id: 7683, name: "Programación y análisis de sistemas paralelos y distribuidos", standing: 16, depsPartial: [], depsTotal: [1774] },
+          { id: 8834, name: "Programación funcional avanzada", standing: 16, depsPartial: [1774, 6563], depsTotal: [] },
+        ],
       },
       {
-        id: "ips8",
+        id: "ips-ing",
         name: "Materia de Ingeniería de productos de software",
         semester: 8,
         credits: 1,
-        standing: 20,
-        depsPartial: [7674],
-        depsTotal: [3924],
-        type: "elective",
+        minCount: 1,
+        type: "group",
+        options: [
+          { id: 6933, name: "Desarrollo de aplicaciones escalables en la nube", standing: 16, depsPartial: [], depsTotal: [3851, 7675] },
+          { id: 7666, name: "Desarrollo de productos de base tecnológica", standing: 16, depsPartial: [6343, 6498, 7674], depsTotal: [] },
+        ],
       },
       {
-        id: "nt8",
-        name: "Materia de Nuevas tecnologías",
+        id: "nt-ing",
+        name: "Materia de Nuevas tecnologías y dominios de aplicación",
         semester: 8,
         credits: 1,
-        standing: 20,
-        depsPartial: [],
-        depsTotal: [],
-        type: "elective",
+        minCount: 1,
+        type: "group",
+        options: [
+          { id: 6872, name: "Desarrollo de interfaces de usuario", standing: 16, depsPartial: [], depsTotal: [6343, 7676, "si-ing"] },
+          { id: 7667, name: "Diseño centrado en el usuario", standing: 16, depsPartial: [6343, "si-ing"], depsTotal: [] },
+          { id: 7676, name: "Interacción humano-computadora", standing: 16, depsPartial: [6343, "si-ing"], depsTotal: [] },
+        ],
       },
       {
         id: 6455,
@@ -412,16 +493,6 @@ function App() {
       {
         id: "e91",
         name: "Electiva 1",
-        semester: 9,
-        credits: 1,
-        standing: 0,
-        depsPartial: [],
-        depsTotal: [],
-        type: "elective",
-      },
-      {
-        id: "cn9",
-        name: "Materia de Comunicación y negociación",
         semester: 9,
         credits: 1,
         standing: 0,
@@ -464,15 +535,238 @@ function App() {
     [],
   );
 
-  const getTotalCredits = useCallback(() => {
-    return subjects.reduce((total, subject) => {
-      const status = subjectStatus[subject.id];
-      if (status === "total" || status === "partial") {
-        return total + subject.credits;
+  // Plan de la Licenciatura en Sistemas (2491), 4 años. Previas según
+  // "Listado de previas" oficial (Dic 25). Las "Materia de ..." y "Electiva N"
+  // son huecos electivos sin código: id string y sin previas específicas.
+  const licenciaturaSubjects = useMemo(
+    () => [
+      // Semestre 1
+      { id: 1479, name: "Programación 1", semester: 1, credits: 1, standing: 0, depsPartial: [], depsTotal: [] },
+      { id: 7687, name: "Taller de tecnologías 1", semester: 1, credits: 1, standing: 0, depsPartial: [], depsTotal: [] },
+      { id: 7109, name: "Fundamentos de matemática", semester: 1, credits: 1, standing: 0, depsPartial: [], depsTotal: [] },
+      { id: 6402, name: "Administración general", semester: 1, credits: 1, standing: 0, depsPartial: [], depsTotal: [] },
+
+      // Semestre 2
+      { id: 1743, name: "Programación 2", semester: 2, credits: 1, standing: 0, depsPartial: [1479], depsTotal: [] },
+      { id: 7698, name: "Lógica y Matemática Discreta", semester: 2, credits: 1, standing: 0, depsPartial: [7109], depsTotal: [] },
+      { id: 6406, name: "Fundamentos de sistemas de información", semester: 2, credits: 1, standing: 0, depsPartial: [6402], depsTotal: [] },
+
+      // Semestre 3
+      { id: 7669, name: "Fundamentos de Ingeniería de software", semester: 3, credits: 1, standing: 2, depsPartial: [1743], depsTotal: [] },
+      { id: 3837, name: "Bases de datos 1", semester: 3, credits: 1, standing: 2, depsPartial: [1743], depsTotal: [] },
+      { id: 1774, name: "Estructuras de datos y algoritmos 1", semester: 3, credits: 1, standing: 2, depsPartial: [1743, 7698], depsTotal: [] },
+      { id: 7680, name: "Marketing, mercados y productos digitales", semester: 3, credits: 1, standing: 2, depsPartial: [], depsTotal: [] },
+
+      // Semestre 3.5
+      {
+        id: "ao-lic",
+        name: "Materia de administración y organizaciones",
+        semester: 3.5,
+        credits: 1,
+        type: "group",
+        options: [
+          { id: 6417, name: "Comportamiento organizacional", standing: 6, depsPartial: [6402], depsTotal: [] },
+          { id: 1417, name: "Derecho de empresa", standing: 16, depsPartial: [], depsTotal: [] },
+          { id: 1875, name: "Marketing de servicios", standing: 16, depsPartial: [], depsTotal: [] },
+          { id: 1410, name: "Recursos humanos", standing: 16, depsPartial: [], depsTotal: [] },
+          { id: 8548, name: "Taller de mejora de procesos de negocio", standing: 4, depsPartial: [], depsTotal: [6402] },
+          { id: 7894, name: "Taller de visualización de datos y storytelling", standing: 4, depsPartial: [], depsTotal: [6402] },
+        ],
+      },
+
+      // Semestre 4
+      { id: 3924, name: "Diseño de aplicaciones 1", semester: 4, credits: 1, standing: 6, depsPartial: [1774, 3837, 7669], depsTotal: [] },
+      { id: 3839, name: "Bases de datos 2", semester: 4, credits: 1, standing: 6, depsPartial: [3837, 7698], depsTotal: [] },
+      { id: 7697, name: "Infraestructura", semester: 4, credits: 1, standing: 6, depsPartial: [1743], depsTotal: [] },
+      { id: 3836, name: "Probabilidad y estadística aplicada", semester: 4, credits: 1, standing: 6, depsPartial: [], depsTotal: [7109] },
+
+      // Semestre 4.5
+      {
+        id: "lnc-lic",
+        name: "Materia de Liderazgo, negociación y comunicación",
+        semester: 4.5,
+        credits: 1,
+        type: "group",
+        // Habilidades gerenciales y Técnicas de negociación piden además
+        // "1 de {ética/inglés/comunicación y liderazgo} TOTAL"; esas materias
+        // no están en este plan, así que solo se modela la previa de ISA1.
+        options: [
+          { id: 7663, name: "Comunicación y liderazgo", standing: 9, depsPartial: [], depsTotal: [] },
+          { id: 5733, name: "Habilidades gerenciales en grupos de proyectos", standing: 16, depsPartial: [7674], depsTotal: [] },
+          { id: 7473, name: "Técnicas de negociación para equipos de proyecto", standing: 16, depsPartial: [7674], depsTotal: [] },
+        ],
+      },
+
+      // Semestre 5
+      { id: 6343, name: "Diseño de aplicaciones 2", semester: 5, credits: 1, standing: 9, depsPartial: [3924, 7669], depsTotal: [] },
+      { id: 3838, name: "Redes", semester: 5, credits: 1, standing: 9, depsPartial: [7697], depsTotal: [] },
+      { id: 7681, name: "Métodos cuantitativos para los negocios", semester: 5, credits: 1, standing: 9, depsPartial: [3836], depsTotal: [] },
+      { id: 7655, name: "Análisis y diseño funcional", semester: 5, credits: 1, standing: 9, depsPartial: [7669], depsTotal: [] },
+
+      // Semestre 5.5
+      { id: 7699, name: "Taller de seguridad informática", semester: 5.5, credits: 1, standing: 12, depsPartial: [], depsTotal: [7697] },
+
+      // Semestre 6
+      { id: 7674, name: "Ingeniería de software ágil 1", semester: 6, credits: 1, standing: 12, depsPartial: [3924, 6402, 7669], depsTotal: [] },
+      { id: 3842, name: "Bases de datos 3", semester: 6, credits: 1, standing: 12, depsPartial: [3837], depsTotal: [] },
+      {
+        id: "si-lic",
+        name: "Materia de Sistemas inteligentes",
+        semester: 6,
+        credits: 1,
+        type: "group",
+        options: [
+          { id: 7678, name: "Machine learning para análisis de datos", standing: 12, depsPartial: [], depsTotal: [1774, 3836] },
+          { id: 7349, name: "Machine learning para sistemas inteligentes", standing: 12, depsPartial: [], depsTotal: [1774, 3836] },
+        ],
+      },
+      { id: "e1-lic", name: "Electiva 1", semester: 6, credits: 1, standing: 12, depsPartial: [], depsTotal: [], type: "elective" },
+      { id: 6498, name: "Programación de redes", semester: 6, credits: 1, standing: 12, depsPartial: [3924, 7697], depsTotal: [] },
+
+      // Semestre 7
+      { id: "e2-lic", name: "Electiva 2", semester: 7, credits: 1, standing: 16, depsPartial: [], depsTotal: [], type: "elective" },
+      {
+        id: "ips-lic",
+        name: "Materia de Ingeniería de productos de software",
+        semester: 7,
+        credits: 1,
+        type: "group",
+        options: [
+          { id: 3851, name: "Arquitectura de software", standing: 16, depsPartial: [6343, 6498], depsTotal: [1774, 3839] },
+          { id: 6455, name: "Arquitectura de software en la práctica", standing: 16, depsPartial: [3851, 6498, 7675, "si-lic"], depsTotal: [] },
+          { id: 7666, name: "Desarrollo de productos de base tecnológica", standing: 16, depsPartial: [6343, 6498, 7674], depsTotal: [] },
+          { id: 7667, name: "Diseño centrado en el usuario", standing: 16, depsPartial: [6343, "si-lic"], depsTotal: [] },
+          { id: 7675, name: "Ingeniería de software ágil 2", standing: 16, depsPartial: [3924, 6343, 6498, 7674], depsTotal: [] },
+          { id: 7676, name: "Interacción humano-computadora", standing: 16, depsPartial: [6343, "si-lic"], depsTotal: [] },
+        ],
+      },
+      {
+        id: "gi-lic",
+        name: "Materia de Gestión de la información",
+        semester: 7,
+        credits: 1,
+        type: "group",
+        options: [
+          { id: 7715, name: "Herramientas de software para Big Data", standing: 16, depsPartial: [3839, 3924], depsTotal: [7697] },
+          { id: 7664, name: "Data mining", standing: 16, depsPartial: [], depsTotal: [3837] },
+        ],
+      },
+      { id: 7658, name: "Arquitecturas empresariales", semester: 7, credits: 1, standing: 16, depsPartial: [7655], depsTotal: [] },
+      { id: 6411, name: "Finanzas y valoración de proyectos", semester: 7, credits: 1, standing: 16, depsPartial: [], depsTotal: [] },
+
+      // Semestre 7.5
+      {
+        id: "ie-lic",
+        name: "Materia de Innovación y emprendedorismo",
+        semester: 7.5,
+        credits: 1,
+        type: "group",
+        options: [
+          { id: 6852, name: "Emprendimientos dinámicos", standing: 16, depsPartial: [], depsTotal: [6402] },
+          { id: 7686, name: "Taller de innovación y emprendedurismo", standing: 16, depsPartial: [], depsTotal: [] },
+        ],
+      },
+
+      // Semestre 8
+      { id: 3861, name: "Proyecto", semester: 8, credits: 1, standing: 20, depsPartial: [6343, 6498, 7674], depsTotal: [3839, 7655] },
+      { id: "e3-lic", name: "Electiva 3", semester: 8, credits: 1, standing: 20, depsPartial: [], depsTotal: [], type: "elective" },
+      { id: 3856, name: "Sistemas de soporte de decisión", semester: 8, credits: 1, standing: 20, depsPartial: ["si-lic"], depsTotal: [] },
+      { id: 6415, name: "Estrategia de negocios", semester: 8, credits: 1, standing: 20, depsPartial: [], depsTotal: [] },
+    ],
+    [],
+  );
+
+  const subjects = useMemo(
+    () => (selectedCareer === "lic" ? licenciaturaSubjects : ingenieriaSubjects),
+    [selectedCareer, ingenieriaSubjects, licenciaturaSubjects],
+  );
+
+  // Un grupo electivo ("elegí una") es una entrada con type "group" y options.
+  // Mapa de grupos por id, para resolver previas que apuntan a un grupo.
+  const groupsById = useMemo(() => {
+    const m = {};
+    for (const s of subjects) if (s.type === "group") m[s.id] = s;
+    return m;
+  }, [subjects]);
+
+  // Nombre por id, cubriendo materias, grupos y opciones (para mostrar previas).
+  const nameById = useMemo(() => {
+    const m = {};
+    for (const s of subjects) {
+      m[s.id] = s.name;
+      if (s.type === "group")
+        for (const o of s.options) m[o.id] = o.name;
+    }
+    return m;
+  }, [subjects]);
+
+  // Estado efectivo de una entrada. Un grupo requiere aprobar minCount opciones
+  // (por defecto 1): "total" si hay al menos minCount opciones totales,
+  // "partial" si hay alguna opción marcada, si no undefined.
+  const entryStatus = useCallback(
+    (entry) => {
+      if (entry.type === "group") {
+        const min = entry.minCount || 1;
+        let totals = 0;
+        let marked = 0;
+        for (const opt of entry.options) {
+          const st = subjectStatus[opt.id];
+          if (st === "total") totals++;
+          if (st) marked++;
+        }
+        if (totals >= min) return "total";
+        if (marked >= 1) return "partial";
+        return undefined;
       }
-      return total;
+      return subjectStatus[entry.id];
+    },
+    [subjectStatus],
+  );
+
+  // Unidades de una entrada, para créditos y estadísticas ponderadas. Un grupo
+  // aporta minCount unidades (cada materia = 1 crédito); done/part cuentan las
+  // opciones aprobadas/en curso, topeadas al mínimo requerido.
+  const entryUnits = useCallback(
+    (entry) => {
+      if (entry.type === "group") {
+        const weight = entry.minCount || 1;
+        let totals = 0;
+        let marked = 0;
+        for (const opt of entry.options) {
+          const st = subjectStatus[opt.id];
+          if (st === "total") totals++;
+          if (st) marked++;
+        }
+        const done = Math.min(totals, weight);
+        const part = Math.min(marked - totals, weight - done);
+        return { weight, done, part };
+      }
+      const st = subjectStatus[entry.id];
+      return {
+        weight: 1,
+        done: st === "total" ? 1 : 0,
+        part: st === "partial" ? 1 : 0,
+      };
+    },
+    [subjectStatus],
+  );
+
+  // Estado de una previa por id (una previa puede apuntar a un grupo).
+  const statusOf = useCallback(
+    (id) => {
+      const grp = groupsById[id];
+      if (grp) return entryStatus(grp);
+      return subjectStatus[id];
+    },
+    [groupsById, entryStatus, subjectStatus],
+  );
+
+  const getTotalCredits = useCallback(() => {
+    return subjects.reduce((total, entry) => {
+      const { done, part } = entryUnits(entry);
+      return total + done + part;
     }, 0);
-  }, [subjects, subjectStatus]);
+  }, [subjects, entryUnits]);
 
   const toggleSubject = (id) => {
     setSubjectStatus((prev) => {
@@ -491,29 +785,48 @@ function App() {
     });
   };
 
-  const isUnlocked = useCallback(
-    (subject) => {
-      const totalCredits = getTotalCredits();
-      if (totalCredits < subject.standing) return false;
-      for (const depId of subject.depsPartial) {
-        if (!subjectStatus[depId]) return false;
+  // ¿Se cumplen los requisitos (standing + previas) de una materia u opción?
+  const meetsRequisites = useCallback(
+    (item, totalCredits) => {
+      if (totalCredits < item.standing) return false;
+      for (const depId of item.depsPartial) {
+        if (!statusOf(depId)) return false;
       }
-      for (const depId of subject.depsTotal) {
-        if (subjectStatus[depId] !== "total") return false;
+      for (const depId of item.depsTotal) {
+        if (statusOf(depId) !== "total") return false;
       }
       return true;
     },
-    [subjectStatus, getTotalCredits],
+    [statusOf],
+  );
+
+  // Una opción de grupo está disponible según sus propios requisitos.
+  const isOptionUnlocked = useCallback(
+    (option) => meetsRequisites(option, getTotalCredits()),
+    [meetsRequisites, getTotalCredits],
+  );
+
+  // Una entrada está disponible: la materia por sus requisitos; un grupo si
+  // al menos una de sus opciones está disponible.
+  const isUnlocked = useCallback(
+    (entry) => {
+      const totalCredits = getTotalCredits();
+      if (entry.type === "group") {
+        return entry.options.some((opt) => meetsRequisites(opt, totalCredits));
+      }
+      return meetsRequisites(entry, totalCredits);
+    },
+    [getTotalCredits, meetsRequisites],
   );
 
   const getSubjectDisplayStatus = useCallback(
-    (subject) => {
-      const status = subjectStatus[subject.id];
+    (entry) => {
+      const status = entryStatus(entry);
       if (status) return status;
-      if (isUnlocked(subject)) return "unlocked";
+      if (isUnlocked(entry)) return "unlocked";
       return "locked";
     },
-    [subjectStatus, isUnlocked],
+    [entryStatus, isUnlocked],
   );
 
   const exportProgress = () => {
@@ -522,7 +835,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `progreso-materias-${new Date().toISOString().split("T")[0]}.json`;
+    a.download = `progreso-${selectedCareer}-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
   };
 
@@ -548,16 +861,19 @@ function App() {
       window.confirm("¿Estás seguro de que querés borrar todo el progreso?")
     ) {
       setSubjectStatus({});
-      localStorage.removeItem("subjectStatus");
+      localStorage.removeItem(statusKey(selectedCareer));
     }
   };
 
   const filteredSubjects = useMemo(() => {
-    return subjects.filter((subject) => {
-      const matchesSearch = subject.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-      const displayStatus = getSubjectDisplayStatus(subject);
+    const term = searchTerm.toLowerCase();
+    return subjects.filter((entry) => {
+      const names =
+        entry.type === "group"
+          ? [entry.name, ...entry.options.map((o) => o.name)]
+          : [entry.name];
+      const matchesSearch = names.some((n) => n.toLowerCase().includes(term));
+      const displayStatus = getSubjectDisplayStatus(entry);
 
       if (filterStatus === "all") return matchesSearch;
       if (filterStatus === "unlocked")
@@ -582,20 +898,21 @@ function App() {
   }, [filteredSubjects]);
 
   const stats = useMemo(() => {
-    const total = subjects.length;
-    const completed = Object.values(subjectStatus).filter(
-      (s) => s === "total",
-    ).length;
-    const partial = Object.values(subjectStatus).filter(
-      (s) => s === "partial",
-    ).length;
-    const unlocked = subjects.filter((s) => {
-      const status = subjectStatus[s.id];
-      return !status && isUnlocked(s);
-    }).length;
+    let total = 0;
+    let completed = 0;
+    let partial = 0;
+    let unlocked = 0;
+    for (const entry of subjects) {
+      const { weight, done, part } = entryUnits(entry);
+      total += weight;
+      completed += done;
+      partial += part;
+      const remaining = weight - done - part;
+      if (remaining > 0 && isUnlocked(entry)) unlocked += remaining;
+    }
     const locked = total - completed - partial - unlocked;
     const totalCredits = getTotalCredits();
-    const progress = Math.round((completed / total) * 100);
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     return {
       total,
@@ -606,23 +923,183 @@ function App() {
       totalCredits,
       progress,
     };
-  }, [subjects, subjectStatus, getTotalCredits, isUnlocked]);
+  }, [subjects, entryUnits, getTotalCredits, isUnlocked]);
+
+  // Bloque de requisitos (standing + previas) de una materia u opción.
+  const renderReqs = (item, totalCredits) => {
+    if (
+      !(
+        item.depsPartial.length > 0 ||
+        item.depsTotal.length > 0 ||
+        item.standing > 0
+      )
+    )
+      return null;
+    return (
+      <div className="text-xs text-indigo-200 mt-2 pt-2 border-t border-white/20 space-y-1">
+        {item.standing > 0 && (
+          <div
+            className={
+              totalCredits >= item.standing ? "text-green-300" : "text-red-300"
+            }
+          >
+            📊 Requiere {item.standing} créditos totales
+          </div>
+        )}
+        {item.depsTotal.length > 0 && (
+          <div>
+            <strong>Total:</strong>{" "}
+            {item.depsTotal.map((d) => nameById[d] || d).join(", ")}
+          </div>
+        )}
+        {item.depsPartial.length > 0 && (
+          <div>
+            <strong>Parcial:</strong>{" "}
+            {item.depsPartial.map((d) => nameById[d] || d).join(", ")}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Tarjeta de una materia normal o de una opción de grupo (isOption).
+  const renderCard = (item, isOption = false) => {
+    const status = subjectStatus[item.id];
+    const displayStatus = isOption
+      ? status || (isOptionUnlocked(item) ? "unlocked" : "locked")
+      : getSubjectDisplayStatus(item);
+    const isComplete = status === "total";
+    const isPartial = status === "partial";
+    const isAvailable = displayStatus === "unlocked";
+    const isLocked = displayStatus === "locked";
+    const totalCredits = getTotalCredits();
+
+    return (
+      <button
+        key={item.id}
+        onClick={() => toggleSubject(item.id)}
+        disabled={isLocked && !status}
+        className={`p-4 rounded-xl border-2 transition-all duration-300 text-left relative overflow-hidden ${
+          isComplete
+            ? "bg-green-500/30 border-green-400 hover:bg-green-500/40"
+            : isPartial
+              ? "bg-yellow-500/30 border-yellow-400 hover:bg-yellow-500/40"
+              : isAvailable
+                ? "bg-blue-500/20 border-blue-400 hover:bg-blue-500/30 hover:scale-105"
+                : "bg-red-500/10 border-red-400/50 opacity-60 cursor-not-allowed"
+        }`}
+      >
+        {!isOption && item.type === "elective" && (
+          <div className="absolute top-2 right-2 bg-purple-500/40 text-purple-200 text-xs px-2 py-1 rounded">
+            Electiva
+          </div>
+        )}
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1 pr-2">
+            <div className="text-white font-semibold mb-1 leading-tight">
+              {item.name}
+            </div>
+            <div className="flex gap-2 items-center flex-wrap">
+              <div className="text-xs text-indigo-200">
+                {typeof item.id === "string" && item.id.startsWith("e")
+                  ? "A elección"
+                  : typeof item.id === "string"
+                    ? "Genérica"
+                    : `ID: ${item.id}`}
+              </div>
+              {!isOption && item.credits > 0 && (
+                <div className="text-xs bg-yellow-500/30 text-yellow-200 px-2 py-0.5 rounded">
+                  {item.credits} crédito
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="ml-2 flex-shrink-0">
+            {isComplete ? (
+              <CheckCircle className="text-green-300" size={24} />
+            ) : isPartial ? (
+              <Circle className="text-yellow-300" size={24} />
+            ) : isAvailable ? (
+              <Unlock className="text-blue-300" size={24} />
+            ) : (
+              <Lock className="text-red-300" size={24} />
+            )}
+          </div>
+        </div>
+        {renderReqs(item, totalCredits)}
+      </button>
+    );
+  };
+
+  // Tarjeta de un grupo electivo: título + opciones ("elegí N").
+  const renderGroupCard = (group) => {
+    const min = group.minCount || 1;
+    const totals = group.options.filter(
+      (o) => subjectStatus[o.id] === "total",
+    ).length;
+    const marked = group.options.filter((o) => subjectStatus[o.id]).length;
+    const credits = group.credits ?? min;
+    return (
+      <div
+        key={group.id}
+        className="md:col-span-2 lg:col-span-3 p-4 rounded-xl border-2 border-purple-400/50 bg-purple-500/10"
+      >
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <span className="text-white font-semibold">{group.name}</span>
+          <span className="text-xs bg-purple-500/40 text-purple-200 px-2 py-1 rounded">
+            Elegí {min}
+          </span>
+          {credits > 0 && (
+            <span className="text-xs bg-yellow-500/30 text-yellow-200 px-2 py-0.5 rounded">
+              {credits} crédito{credits > 1 ? "s" : ""}
+            </span>
+          )}
+          <span className="ml-auto text-xs text-indigo-200">
+            {marked > 0
+              ? `${totals}/${min} aprobada${min > 1 ? "s" : ""}`
+              : `${group.options.length} opciones`}
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {group.options.map((opt) => renderCard(opt, true))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6 border border-white/20">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-start justify-between mb-4 gap-4 flex-wrap">
             <div>
               <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">
-                Ingeniería en Sistemas
+                {CAREER_META[selectedCareer].name}
               </h1>
               <p className="text-indigo-200">
-                Universidad ORT - Plan 2019 (2485)
+                {CAREER_META[selectedCareer].subtitle}
               </p>
             </div>
-            <Trophy className="text-yellow-400" size={48} />
+            <div className="flex items-center gap-3">
+              <label htmlFor="career-select" className="sr-only">
+                Elegir carrera
+              </label>
+              <select
+                id="career-select"
+                value={selectedCareer}
+                onChange={(e) => setSelectedCareer(e.target.value)}
+                aria-label="Elegir carrera"
+                className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer"
+              >
+                {Object.entries(CAREER_META).map(([id, meta]) => (
+                  <option key={id} value={id} className="text-slate-900">
+                    {meta.name}
+                  </option>
+                ))}
+              </select>
+              <Trophy className="text-yellow-400" size={48} />
+            </div>
           </div>
           <div className="mb-3">
             <div className="flex justify-between text-sm text-indigo-200 mb-1">
@@ -778,123 +1255,16 @@ function App() {
                   <BookOpen className="text-indigo-300" size={24} />
                   <h2 className="text-2xl font-bold text-white">{semester}</h2>
                   <span className="ml-auto text-indigo-300 text-sm">
-                    {subjectList.filter((s) => subjectStatus[s.id]).length}/
+                    {subjectList.filter((s) => entryStatus(s)).length}/
                     {subjectList.length}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {subjectList.map((subject) => {
-                    const status = subjectStatus[subject.id];
-                    const displayStatus = getSubjectDisplayStatus(subject);
-                    const isComplete = status === "total";
-                    const isPartial = status === "partial";
-                    const isAvailable = displayStatus === "unlocked";
-                    const isLocked = displayStatus === "locked";
-                    const totalCredits = getTotalCredits();
-
-                    return (
-                      <button
-                        key={subject.id}
-                        onClick={() => toggleSubject(subject.id)}
-                        disabled={isLocked && !status}
-                        className={`p-4 rounded-xl border-2 transition-all duration-300 text-left relative overflow-hidden ${
-                          isComplete
-                            ? "bg-green-500/30 border-green-400 hover:bg-green-500/40"
-                            : isPartial
-                              ? "bg-yellow-500/30 border-yellow-400 hover:bg-yellow-500/40"
-                              : isAvailable
-                                ? "bg-blue-500/20 border-blue-400 hover:bg-blue-500/30 hover:scale-105"
-                                : "bg-red-500/10 border-red-400/50 opacity-60 cursor-not-allowed"
-                        }`}
-                      >
-                        {subject.type === "elective" && (
-                          <div className="absolute top-2 right-2 bg-purple-500/40 text-purple-200 text-xs px-2 py-1 rounded">
-                            Electiva
-                          </div>
-                        )}
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1 pr-2">
-                            <div className="text-white font-semibold mb-1 leading-tight">
-                              {subject.name}
-                            </div>
-                            <div className="flex gap-2 items-center flex-wrap">
-                              <div className="text-xs text-indigo-200">
-                                {typeof subject.id === "string" &&
-                                subject.id.startsWith("e")
-                                  ? "A elección"
-                                  : typeof subject.id === "string"
-                                    ? "Genérica"
-                                    : `ID: ${subject.id}`}
-                              </div>
-                              {subject.credits > 0 && (
-                                <div className="text-xs bg-yellow-500/30 text-yellow-200 px-2 py-0.5 rounded">
-                                  {subject.credits} crédito
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="ml-2 flex-shrink-0">
-                            {isComplete ? (
-                              <CheckCircle
-                                className="text-green-300"
-                                size={24}
-                              />
-                            ) : isPartial ? (
-                              <Circle className="text-yellow-300" size={24} />
-                            ) : isAvailable ? (
-                              <Unlock className="text-blue-300" size={24} />
-                            ) : (
-                              <Lock className="text-red-300" size={24} />
-                            )}
-                          </div>
-                        </div>
-
-                        {(subject.depsPartial.length > 0 ||
-                          subject.depsTotal.length > 0 ||
-                          subject.standing > 0) && (
-                          <div className="text-xs text-indigo-200 mt-2 pt-2 border-t border-white/20 space-y-1">
-                            {subject.standing > 0 && (
-                              <div
-                                className={
-                                  totalCredits >= subject.standing
-                                    ? "text-green-300"
-                                    : "text-red-300"
-                                }
-                              >
-                                📊 Requiere {subject.standing} créditos totales
-                              </div>
-                            )}
-                            {subject.depsTotal.length > 0 && (
-                              <div>
-                                <strong>Total:</strong>{" "}
-                                {subject.depsTotal
-                                  .map((depId) => {
-                                    const dep = subjects.find(
-                                      (s) => s.id === depId,
-                                    );
-                                    return dep ? dep.name : depId;
-                                  })
-                                  .join(", ")}
-                              </div>
-                            )}
-                            {subject.depsPartial.length > 0 && (
-                              <div>
-                                <strong>Parcial:</strong>{" "}
-                                {subject.depsPartial
-                                  .map((depId) => {
-                                    const dep = subjects.find(
-                                      (s) => s.id === depId,
-                                    );
-                                    return dep ? dep.name : depId;
-                                  })
-                                  .join(", ")}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                  {subjectList.map((entry) =>
+                    entry.type === "group"
+                      ? renderGroupCard(entry)
+                      : renderCard(entry),
+                  )}
                 </div>
               </div>
             ))}
@@ -931,6 +1301,10 @@ function App() {
               </p>
               <p>
                 ✨ <strong>3er click</strong>: Desmarca la materia
+              </p>
+              <p>
+                🟣 <strong className="text-purple-300">Grupo electiva</strong>:
+                elegí y marcá 1 de las opciones (cuenta 1 crédito)
               </p>
               <p>💾 Tu progreso se guarda automáticamente en tu navegador</p>
             </div>
