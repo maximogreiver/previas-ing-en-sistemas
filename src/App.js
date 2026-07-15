@@ -279,25 +279,27 @@ function App() {
         depsTotal: [],
       },
 
-      // Semestre 5.5
+      // Semestre 5.5 — Comunicación y negociación exige 2 materias del grupo,
+      // repartidas en dos slots (5.5 y 9). Cada opción usa una clave de tracking
+      // propia por slot (id) más el código real (code), para que ambos slots
+      // sean independientes. Gestión de comunicación, Habilidades gerenciales,
+      // Habilidades de equipo y Técnicas de negociación piden además "1 de
+      // {ética / inglés / Comunicación y liderazgo} TOTAL"; ética e inglés no
+      // están en el plan, así que se modela con Comunicación y liderazgo (7663).
       {
-        id: "com-ing",
-        name: "Materia de Comunicación y negociación",
+        id: "com-ing-1",
+        name: "Materia de Comunicación y negociación (1 de 2)",
         semester: 5.5,
-        credits: 2,
-        minCount: 2,
+        credits: 1,
+        minCount: 1,
         type: "group",
-        // Gestión de comunicación, Habilidades gerenciales, Habilidades de
-        // equipo y Técnicas de negociación piden además "1 de {ética / inglés /
-        // Comunicación y liderazgo} TOTAL". Ética e inglés no están en este
-        // plan, así que se modela con Comunicación y liderazgo (7663) TOTAL.
         options: [
-          { id: 7663, name: "Comunicación y liderazgo", standing: 12, depsPartial: [], depsTotal: [] },
-          { id: 1410, name: "Recursos humanos", standing: 16, depsPartial: [], depsTotal: [] },
-          { id: 5636, name: "Gestión de comunicación, conflictos en proyectos", standing: 16, depsPartial: [7674], depsTotal: [7663] },
-          { id: 5733, name: "Habilidades gerenciales en grupos de proyectos", standing: 16, depsPartial: [7674], depsTotal: [7663] },
-          { id: 5906, name: "Habilidades de equipo en desarrollo de software", standing: 16, depsPartial: [7674], depsTotal: [7663] },
-          { id: 7473, name: "Técnicas de negociación para equipos de proyecto", standing: 16, depsPartial: [7674], depsTotal: [7663] },
+          { id: "c1-7663", code: 7663, name: "Comunicación y liderazgo", standing: 12, depsPartial: [], depsTotal: [] },
+          { id: "c1-1410", code: 1410, name: "Recursos humanos", standing: 16, depsPartial: [], depsTotal: [] },
+          { id: "c1-5636", code: 5636, name: "Gestión de comunicación, conflictos en proyectos", standing: 16, depsPartial: [7674], depsTotal: [7663] },
+          { id: "c1-5733", code: 5733, name: "Habilidades gerenciales en grupos de proyectos", standing: 16, depsPartial: [7674], depsTotal: [7663] },
+          { id: "c1-5906", code: 5906, name: "Habilidades de equipo en desarrollo de software", standing: 16, depsPartial: [7674], depsTotal: [7663] },
+          { id: "c1-7473", code: 7473, name: "Técnicas de negociación para equipos de proyecto", standing: 16, depsPartial: [7674], depsTotal: [7663] },
         ],
       },
 
@@ -490,6 +492,22 @@ function App() {
       },
 
       // Semestre 9
+      {
+        id: "com-ing-2",
+        name: "Materia de Comunicación y negociación (2 de 2)",
+        semester: 9,
+        credits: 1,
+        minCount: 1,
+        type: "group",
+        options: [
+          { id: "c2-7663", code: 7663, name: "Comunicación y liderazgo", standing: 12, depsPartial: [], depsTotal: [] },
+          { id: "c2-1410", code: 1410, name: "Recursos humanos", standing: 16, depsPartial: [], depsTotal: [] },
+          { id: "c2-5636", code: 5636, name: "Gestión de comunicación, conflictos en proyectos", standing: 16, depsPartial: [7674], depsTotal: [7663] },
+          { id: "c2-5733", code: 5733, name: "Habilidades gerenciales en grupos de proyectos", standing: 16, depsPartial: [7674], depsTotal: [7663] },
+          { id: "c2-5906", code: 5906, name: "Habilidades de equipo en desarrollo de software", standing: 16, depsPartial: [7674], depsTotal: [7663] },
+          { id: "c2-7473", code: 7473, name: "Técnicas de negociación para equipos de proyecto", standing: 16, depsPartial: [7674], depsTotal: [7663] },
+        ],
+      },
       {
         id: "e91",
         name: "Electiva 1",
@@ -689,13 +707,18 @@ function App() {
     return m;
   }, [subjects]);
 
-  // Nombre por id, cubriendo materias, grupos y opciones (para mostrar previas).
+  // Nombre por id/código, cubriendo materias, grupos y opciones. Una opción
+  // tiene una clave de tracking (id) y un código real (code, por defecto id);
+  // se indexan ambos para poder mostrar previas que apuntan al código.
   const nameById = useMemo(() => {
     const m = {};
     for (const s of subjects) {
       m[s.id] = s.name;
       if (s.type === "group")
-        for (const o of s.options) m[o.id] = o.name;
+        for (const o of s.options) {
+          m[o.id] = o.name;
+          m[o.code ?? o.id] = o.name;
+        }
     }
     return m;
   }, [subjects]);
@@ -751,14 +774,31 @@ function App() {
     [subjectStatus],
   );
 
-  // Estado de una previa por id (una previa puede apuntar a un grupo).
+  // Estado agregado por código de materia. Una misma materia puede figurar como
+  // opción en más de un slot (p. ej. Comunicación en 5.5 y 9); acá se combina:
+  // "total" si algún slot la tiene total, "partial" si alguno la tiene marcada.
+  const statusByCode = useMemo(() => {
+    const m = {};
+    const put = (code, st) => {
+      if (!st || m[code] === "total") return;
+      m[code] = st === "total" ? "total" : m[code] || "partial";
+    };
+    for (const s of subjects) {
+      if (s.type === "group")
+        for (const o of s.options) put(o.code ?? o.id, subjectStatus[o.id]);
+      else put(s.id, subjectStatus[s.id]);
+    }
+    return m;
+  }, [subjects, subjectStatus]);
+
+  // Estado de una previa por id. Puede apuntar a un grupo o a un código.
   const statusOf = useCallback(
     (id) => {
       const grp = groupsById[id];
       if (grp) return entryStatus(grp);
-      return subjectStatus[id];
+      return statusByCode[id];
     },
-    [groupsById, entryStatus, subjectStatus],
+    [groupsById, entryStatus, statusByCode],
   );
 
   const getTotalCredits = useCallback(() => {
@@ -768,12 +808,16 @@ function App() {
     }, 0);
   }, [subjects, entryUnits]);
 
-  const toggleSubject = (id) => {
+  // Cicla el estado de una materia u opción: sin marcar → parcial → total → sin
+  // marcar. Dentro de un grupo solo puede haber una opción marcada, así que al
+  // empezar a marcar una se limpian las hermanas (siblings).
+  const toggleSubject = (id, siblings = []) => {
     setSubjectStatus((prev) => {
       const current = prev[id];
       const newStatus = { ...prev };
 
       if (!current) {
+        for (const sid of siblings) delete newStatus[sid];
         newStatus[id] = "partial";
       } else if (current === "partial") {
         newStatus[id] = "total";
@@ -963,8 +1007,10 @@ function App() {
   };
 
   // Tarjeta de una materia normal o de una opción de grupo (isOption).
-  const renderCard = (item, isOption = false) => {
+  // siblings: claves de las otras opciones del grupo (para exclusividad).
+  const renderCard = (item, isOption = false, siblings = []) => {
     const status = subjectStatus[item.id];
+    const code = item.code ?? item.id;
     const displayStatus = isOption
       ? status || (isOptionUnlocked(item) ? "unlocked" : "locked")
       : getSubjectDisplayStatus(item);
@@ -977,7 +1023,7 @@ function App() {
     return (
       <button
         key={item.id}
-        onClick={() => toggleSubject(item.id)}
+        onClick={() => toggleSubject(item.id, siblings)}
         disabled={isLocked && !status}
         className={`p-4 rounded-xl border-2 transition-all duration-300 text-left relative overflow-hidden ${
           isComplete
@@ -1001,11 +1047,11 @@ function App() {
             </div>
             <div className="flex gap-2 items-center flex-wrap">
               <div className="text-xs text-indigo-200">
-                {typeof item.id === "string" && item.id.startsWith("e")
+                {typeof code === "string" && code.startsWith("e")
                   ? "A elección"
-                  : typeof item.id === "string"
+                  : typeof code === "string"
                     ? "Genérica"
-                    : `ID: ${item.id}`}
+                    : `ID: ${code}`}
               </div>
               {!isOption && item.credits > 0 && (
                 <div className="text-xs bg-yellow-500/30 text-yellow-200 px-2 py-0.5 rounded">
@@ -1061,7 +1107,13 @@ function App() {
           </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {group.options.map((opt) => renderCard(opt, true))}
+          {group.options.map((opt) =>
+            renderCard(
+              opt,
+              true,
+              group.options.filter((o) => o.id !== opt.id).map((o) => o.id),
+            ),
+          )}
         </div>
       </div>
     );
