@@ -9,7 +9,6 @@ import {
   Trophy,
   Star,
   Download,
-  Upload,
   GraduationCap,
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
@@ -796,6 +795,21 @@ function App() {
     return m;
   }, [subjects, subjectStatus]);
 
+  // Código de materia → claves de opción que lo comparten (una misma materia
+  // puede figurar en varios slots, p. ej. Comunicación en 5.5 y 9). Sirve para
+  // impedir elegir la misma materia en dos slots del mismo grupo/carrera.
+  const codeToOptionKeys = useMemo(() => {
+    const m = {};
+    for (const s of subjects)
+      if (s.type === "group")
+        for (const o of s.options) {
+          const c = o.code ?? o.id;
+          if (!m[c]) m[c] = [];
+          m[c].push(o.id);
+        }
+    return m;
+  }, [subjects]);
+
   // Estado de una previa por id. Puede apuntar a un grupo o a un código.
   const statusOf = useCallback(
     (id) => {
@@ -1002,6 +1016,14 @@ function App() {
     }
   };
 
+  // Un solo botón de importar: PDF de escolaridad o JSON de respaldo.
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.name.toLowerCase().endsWith(".json")) importProgress(e);
+    else importEscolaridad(e);
+  };
+
   const resetProgress = () => {
     if (
       window.confirm("¿Estás seguro de que querés borrar todo el progreso?")
@@ -1113,20 +1135,28 @@ function App() {
   const renderCard = (item, isOption = false, siblings = []) => {
     const status = subjectStatus[item.id];
     const code = item.code ?? item.id;
+    // Bloqueada si esta misma materia ya fue elegida en otro slot del grupo
+    // (p. ej. no podés dar la misma materia de Comunicación en 5.5 y en 9).
+    const blockedByTwin =
+      isOption &&
+      !status &&
+      (codeToOptionKeys[code] || []).some(
+        (k) => k !== item.id && subjectStatus[k],
+      );
     const displayStatus = isOption
       ? status || (isOptionUnlocked(item) ? "unlocked" : "locked")
       : getSubjectDisplayStatus(item);
     const isComplete = status === "total";
     const isPartial = status === "partial";
-    const isAvailable = displayStatus === "unlocked";
-    const isLocked = displayStatus === "locked";
+    const isAvailable = displayStatus === "unlocked" && !blockedByTwin;
+    const isLocked = displayStatus === "locked" || blockedByTwin;
     const totalCredits = getTotalCredits();
 
     return (
       <button
         key={item.id}
         onClick={() => toggleSubject(item.id, siblings)}
-        disabled={isLocked && !status}
+        disabled={(isLocked && !status) || blockedByTwin}
         className={`p-4 rounded-xl border-2 transition-all duration-300 text-left relative overflow-hidden ${
           isComplete
             ? "bg-green-500/30 border-green-400 hover:bg-green-500/40"
@@ -1174,7 +1204,13 @@ function App() {
             )}
           </div>
         </div>
-        {renderReqs(item, totalCredits)}
+        {blockedByTwin ? (
+          <div className="text-xs text-purple-200 mt-2 pt-2 border-t border-white/20">
+            ✋ Ya la elegiste en el otro grupo
+          </div>
+        ) : (
+          renderReqs(item, totalCredits)
+        )}
       </button>
     );
   };
@@ -1274,37 +1310,36 @@ function App() {
                 {stats.totalCredits} créditos
               </span>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <label className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition cursor-pointer">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Acción principal: cargar tu escolaridad (o un respaldo .json) */}
+              <label
+                title="Subí el PDF de tu escolaridad de ORT (o un respaldo .json)"
+                className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-medium rounded-lg transition cursor-pointer"
+              >
                 <GraduationCap size={18} />
                 Importar escolaridad
                 <input
                   type="file"
-                  accept=".pdf"
-                  onChange={importEscolaridad}
+                  accept=".pdf,.json"
+                  onChange={handleImport}
                   className="hidden"
                 />
               </label>
+              {/* Acciones secundarias: respaldo y borrado */}
               <button
                 onClick={exportProgress}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition"
+                title="Descargar un respaldo de tu progreso (.json)"
+                aria-label="Exportar respaldo"
+                className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-indigo-100 rounded-lg transition text-sm"
               >
-                <Download size={18} />
+                <Download size={16} />
                 Exportar
               </button>
-              <label className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition cursor-pointer">
-                <Upload size={18} />
-                Importar
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={importProgress}
-                  className="hidden"
-                />
-              </label>
               <button
                 onClick={resetProgress}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition"
+                title="Borrar todo el progreso de esta carrera"
+                aria-label="Borrar progreso"
+                className="px-3 py-2 bg-white/10 hover:bg-red-500/30 text-red-200 rounded-lg transition text-sm"
               >
                 Reset
               </button>
