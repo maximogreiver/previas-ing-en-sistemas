@@ -1263,33 +1263,37 @@ function App() {
         {/* Header */}
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6 border border-white/20">
           <div className="flex items-start justify-between mb-4 gap-4 flex-wrap">
-            <div>
-              <h1 className="text-2xl md:text-4xl font-bold text-white mb-2">
-                {CAREER_META[selectedCareer].name}
-              </h1>
-              <p className="text-indigo-200">
+            <div className="flex-1 min-w-0">
+              {/* Selector de carrera: pestañas prominentes que hacen de título */}
+              <div className="text-xs uppercase tracking-wider text-indigo-300 mb-2">
+                Elegí tu carrera
+              </div>
+              <div
+                role="tablist"
+                aria-label="Elegir carrera"
+                className="inline-flex flex-wrap gap-1 p-1 bg-black/25 rounded-xl border border-white/20 mb-3"
+              >
+                {Object.entries(CAREER_META).map(([id, meta]) => (
+                  <button
+                    key={id}
+                    role="tab"
+                    aria-selected={selectedCareer === id}
+                    onClick={() => setSelectedCareer(id)}
+                    className={`px-4 py-2 rounded-lg text-sm md:text-base font-semibold transition ${
+                      selectedCareer === id
+                        ? "bg-indigo-500 text-white shadow-lg"
+                        : "text-indigo-200 hover:bg-white/10"
+                    }`}
+                  >
+                    {meta.name}
+                  </button>
+                ))}
+              </div>
+              <p className="text-indigo-200 text-sm">
                 {CAREER_META[selectedCareer].subtitle}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <label htmlFor="career-select" className="sr-only">
-                Elegir carrera
-              </label>
-              <select
-                id="career-select"
-                value={selectedCareer}
-                onChange={(e) => setSelectedCareer(e.target.value)}
-                aria-label="Elegir carrera"
-                className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer"
-              >
-                {Object.entries(CAREER_META).map(([id, meta]) => (
-                  <option key={id} value={id} className="text-slate-900">
-                    {meta.name}
-                  </option>
-                ))}
-              </select>
-              <Trophy className="text-yellow-400" size={48} />
-            </div>
+            <Trophy className="text-yellow-400 flex-shrink-0" size={48} />
           </div>
           <div className="mb-3">
             <div className="flex justify-between text-sm text-indigo-200 mb-1">
