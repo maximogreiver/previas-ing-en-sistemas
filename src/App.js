@@ -10,8 +10,13 @@ import {
   Star,
   Download,
   Upload,
+  GraduationCap,
 } from "lucide-react";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
 import "./App.css";
+
+// pdf.js corre en un worker servido junto a la app (ver public/).
+pdfjsLib.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.min.js`;
 
 // Metadata de cada carrera. Las materias se definen dentro del componente.
 const CAREER_META = {
@@ -900,6 +905,103 @@ function App() {
     reader.readAsText(file);
   };
 
+  // Importa el "Certificado de escolaridad" (PDF) de ORT: detecta la carrera,
+  // lee las materias aprobadas y las marca como total. Todo local, sin enviar
+  // el archivo a ningún lado.
+  const importEscolaridad = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+
+      // Reconstruye líneas de texto a partir del contenido del PDF.
+      const lines = [];
+      let fullText = "";
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        let line = "";
+        for (const item of content.items) {
+          line += item.str;
+          if (item.hasEOL) {
+            lines.push(line);
+            fullText += line + "\n";
+            line = "";
+          } else {
+            line += " ";
+          }
+        }
+        if (line.trim()) {
+          lines.push(line);
+          fullText += line + "\n";
+        }
+      }
+
+      // Detecta la carrera por el código de título (2485 Ing / 2491 Lic).
+      const target = /\(2491\)/.test(fullText)
+        ? "lic"
+        : /\(2485\)/.test(fullText)
+          ? "ing"
+          : selectedCareer;
+      const targetSubjects =
+        target === "lic" ? licenciaturaSubjects : ingenieriaSubjects;
+
+      // Código de materia → claves de tracking (una materia de grupo puede
+      // tener más de una clave si figura en varios slots, p. ej. Comunicación).
+      const codeToKeys = {};
+      const addKey = (code, key) => {
+        if (!codeToKeys[code]) codeToKeys[code] = [];
+        codeToKeys[code].push(key);
+      };
+      for (const s of targetSubjects) {
+        if (s.type === "group")
+          for (const o of s.options) addKey(o.code ?? o.id, o.id);
+        else addKey(s.id, s.id);
+      }
+
+      // Marca como total cada materia aprobada. Una línea cuenta si tiene un
+      // código y dice "Aprobada" (las pendientes muestran "------------").
+      const merged = { ...loadStatus(target) };
+      const used = new Set(Object.keys(merged));
+      let count = 0;
+      const notFound = [];
+      for (const ln of lines) {
+        const m = ln.match(/\((\d{3,4})\)/);
+        if (!m || !/aprobada/i.test(ln)) continue;
+        const code = Number(m[1]);
+        const keys = codeToKeys[code];
+        if (!keys) {
+          notFound.push(code);
+          continue;
+        }
+        const key = keys.find((k) => !used.has(k)) || keys[0];
+        if (merged[key] !== "total") count++;
+        merged[key] = "total";
+        used.add(key);
+      }
+
+      // Persiste y aplica. Si cambia la carrera, el efecto la carga sola.
+      localStorage.setItem(statusKey(target), JSON.stringify(merged));
+      if (target !== selectedCareer) setSelectedCareer(target);
+      else setSubjectStatus(merged);
+
+      alert(
+        `Escolaridad importada — ${CAREER_META[target].name}: ` +
+          `${count} materia(s) marcadas como aprobadas.` +
+          (notFound.length
+            ? `\n\nCódigos no reconocidos en el plan: ${notFound.join(", ")}`
+            : ""),
+      );
+    } catch (error) {
+      alert(
+        "No se pudo leer la escolaridad. Asegurate de que sea el PDF (con texto) del certificado de ORT.",
+      );
+    } finally {
+      e.target.value = "";
+    }
+  };
+
   const resetProgress = () => {
     if (
       window.confirm("¿Estás seguro de que querés borrar todo el progreso?")
@@ -1173,6 +1275,16 @@ function App() {
               </span>
             </div>
             <div className="flex gap-2 flex-wrap">
+              <label className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition cursor-pointer">
+                <GraduationCap size={18} />
+                Importar escolaridad
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={importEscolaridad}
+                  className="hidden"
+                />
+              </label>
               <button
                 onClick={exportProgress}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition"
