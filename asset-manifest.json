@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/previas-ing-en-sistemas/static/css/main.6133bf14.css",
-    "main.js": "/previas-ing-en-sistemas/static/js/main.50928270.js",
+    "main.css": "/previas-ing-en-sistemas/static/css/main.23a8f60f.css",
+    "main.js": "/previas-ing-en-sistemas/static/js/main.9c0fda7b.js",
     "index.html": "/previas-ing-en-sistemas/index.html",
-    "main.6133bf14.css.map": "/previas-ing-en-sistemas/static/css/main.6133bf14.css.map",
-    "main.50928270.js.map": "/previas-ing-en-sistemas/static/js/main.50928270.js.map"
+    "main.23a8f60f.css.map": "/previas-ing-en-sistemas/static/css/main.23a8f60f.css.map",
+    "main.9c0fda7b.js.map": "/previas-ing-en-sistemas/static/js/main.9c0fda7b.js.map"
   },
   "entrypoints": [
-    "static/css/main.6133bf14.css",
-    "static/js/main.50928270.js"
+    "static/css/main.23a8f60f.css",
+    "static/js/main.9c0fda7b.js"
   ]
 }
