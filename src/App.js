@@ -25,7 +25,7 @@ const CAREER_META = {
   },
   lic: {
     name: "Licenciatura en Sistemas",
-    subtitle: "Universidad ORT",
+    subtitle: "Universidad ORT - Plan 2019 (2491)",
   },
 };
 
